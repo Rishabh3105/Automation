@@ -1,0 +1,68 @@
+import os
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.application import MIMEApplication
+import datetime
+
+def get_latest_file(folder_path):
+    files = os.listdir(folder_path)
+    if files:
+        files.sort(key=lambda x: os.path.getmtime(os.path.join(folder_path, x)), reverse=True)
+        return os.path.join(folder_path, files[0])
+    else:
+        return None
+
+def send_email(to_email, subject, body, attachments=None):
+    msg = MIMEMultipart()
+    msg['From'] = 'your_email@example.com'
+    msg['To'] = to_email
+    msg['Subject'] = subject
+    msg.attach(MIMEText(body, 'plain'))
+
+    if attachments:
+        for attachment in attachments:
+            with open(attachment, 'rb') as file:
+                part = MIMEApplication(file.read(), Name=os.path.basename(attachment))
+                part['Content-Disposition'] = f'attachment; filename="{os.path.basename(attachment)}"'
+                msg.attach(part)
+
+    with smtplib.SMTP('your_smtp_server', 587) as server:
+        server.starttls()
+        server.login('your_email@example.com', 'your_email_password')
+        server.sendmail('your_email@example.com', to_email, msg.as_string())
+
+def schedule_email():
+    today = datetime.datetime.now().weekday()
+    
+    if today in [0, 1, 2, 3, 4]:  # Monday to Friday
+        scheduled_time = datetime.datetime.now().replace(hour=15, minute=0, second=0, microsecond=0)
+        current_time = datetime.datetime.now()
+
+        time_difference = scheduled_time - current_time
+
+        if time_difference.total_seconds() > 0:
+            print(f"Email scheduled for {scheduled_time}")
+            send_email_and_exit()
+        else:
+            print("Scheduled time has already passed for today.")
+    else:
+        print("Today is Saturday or Sunday. No email will be sent.")
+
+def send_email_and_exit():
+    folder1_path = '/path/to/folder1'
+    folder2_path = '/path/to/folder2'
+
+    latest_file1 = get_latest_file(folder1_path)
+    latest_file2 = get_latest_file(folder2_path)
+
+    if latest_file1 and latest_file2:
+        to_email = 'recipient@example.com'
+        subject = 'Latest Files'
+        body = 'Please find the latest files attached.'
+        send_email(to_email, subject, body, attachments=[latest_file1, latest_file2])
+    else:
+        print("No files found in the specified folders.")
+
+if __name__ == "__main__":
+    schedule_email()
